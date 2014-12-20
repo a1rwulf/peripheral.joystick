@@ -22,10 +22,15 @@
 #include "Joystick.h"
 
 #include "platform/threads/mutex.h"
-#include "xbmc_peripheral_types.h"
+#include "xbmc_peripheral_utils.hpp"
+
+#include <map>
+#include <vector>
 
 namespace JOYSTICK
 {
+  class IJoystickInterface;
+
   class CJoystickManager
   {
   private:
@@ -38,13 +43,18 @@ namespace JOYSTICK
 
     bool Initialize(void);
     void Deinitialize(void);
+    bool PerformDeviceScan(std::vector<ADDON::PeripheralScanResult>& scanResults);
 
-    PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
+    bool GetJoystickInfo(unsigned int index, ADDON::JoystickInfo& info) const;
 
-    bool GetEvents(EventMap& events);
+    /*!
+    * @brief Get all events that have occurred since the last call to GetEvents()
+    */
+    bool GetEvents(std::vector<ADDON::PeripheralEvent>& events);
 
   private:
-    std::vector<IJoystick*> m_joysticks;
-    PLATFORM::CMutex        m_joystickMutex;
+    std::vector<CJoystickInterface*>   m_interfaces;
+    std::map<unsigned int, IJoystick*> m_joysticks; // joystick ID -> joystick
+    PLATFORM::CMutex                   m_joystickMutex;
   };
 }

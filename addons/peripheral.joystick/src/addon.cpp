@@ -131,110 +131,34 @@ PERIPHERAL_ERROR GetAddonCapabilities(PERIPHERAL_CAPABILITIES *pCapabilities)
   if (!pCapabilities)
     return PERIPHERAL_ERROR_INVALID_PARAMETERS;
 
-  pCapabilities->bProvidesJoysticks = true;
+  pCapabilities->provides_joysticks = true;
 
   return PERIPHERAL_NO_ERROR;
 }
 
-PERIPHERAL_ERROR PerformJoystickScan(unsigned int* joystick_count, JOYSTICK_CONFIGURATION** joysticks)
+PERIPHERAL_ERROR GetJoystickInfo(unsigned int index, JOYSTICK_INFO* info)
 {
-  if (!joystick_count || !joysticks)
+  if (!info)
     return PERIPHERAL_ERROR_INVALID_PARAMETERS;
 
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  *joystick_count = 0;
-  *joysticks = NULL;
-
-  std::vector<JoystickConfiguration> joystickConfigs;
-  PERIPHERAL_ERROR retVal = JOYSTICKS->PerformJoystickScan(joystickConfigs);
-
-  if (retVal == PERIPHERAL_NO_ERROR && !joystickConfigs.empty())
+  JoystickInfo joystickInfo;
+  if (CJoystickManager::Get().GetJoystickInfo(index, joystickInfo))
   {
-    *joystick_count = joystickConfigs.size();
-    *joysticks = new JOYSTICK_CONFIGURATION[joystickConfigs.size()];
-    for (unsigned int i = 0; i < joystickConfigs.size(); i++)
-      joystickConfigs[i].ToJoystickConfiguration(*joysticks[i]);
+    joystickInfo.ToStruct(*info);
+    return PERIPHERAL_NO_ERROR;
   }
-
-  return retVal;
+  return PERIPHERAL_ERROR_FAILED;
 }
 
-void FreeJoysticks(unsigned int joystick_count, JOYSTICK_CONFIGURATION* joysticks)
+void FreeJoystickInfo(JOYSTICK_INFO* info)
 {
-  if (joysticks)
-  {
-    for (unsigned int i = 0; i < joystick_count; i++)
-      JoystickConfiguration::Free(joysticks[i]);
-  }
-  delete[] joysticks;
+  if (!info)
+    return;
+
+  JoystickInfo::FreeStruct(*info);
 }
 
-PERIPHERAL_ERROR RegisterButton(unsigned int joystick_index, JOYSTICK_MAP_BUTTON* button)
-{
-  if (!button)
-    return PERIPHERAL_ERROR_INVALID_PARAMETERS;
-
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  ButtonMap buttonMap(*button);
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR UnregisterButton(unsigned int joystick_index, unsigned int button_index)
-{
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR RegisterTrigger(unsigned int joystick_index, JOYSTICK_MAP_TRIGGER* trigger)
-{
-  if (!trigger)
-    return PERIPHERAL_ERROR_INVALID_PARAMETERS;
-
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  TriggerMap triggerMap(*trigger);
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR UnregisterTrigger(unsigned int joystick_index, unsigned int trigger_index)
-{
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR RegisterAnalogStick(unsigned int joystick_index, JOYSTICK_MAP_ANALOG_STICK* analog_stick)
-{
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  if (!analog_stick)
-    return PERIPHERAL_ERROR_INVALID_PARAMETERS;
-
-  AnalogStickMap analogStickMap(*analog_stick);
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR UnregisterAnalogStick(unsigned int joystick_index, unsigned int analog_stick_index)
-{
-  if (!JOYSTICKS)
-    return PERIPHERAL_ERROR_FAILED;
-
-  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
-}
-
-PERIPHERAL_ERROR GetEvents(unsigned int* event_count, JOYSTICK_EVENT** events)
+PERIPHERAL_ERROR GetEvents(unsigned int* event_count, PERIPHERAL_EVENT** events)
 {
   if (!event_count || !events)
     return PERIPHERAL_ERROR_INVALID_PARAMETERS;
@@ -242,98 +166,34 @@ PERIPHERAL_ERROR GetEvents(unsigned int* event_count, JOYSTICK_EVENT** events)
   if (!JOYSTICKS)
     return PERIPHERAL_ERROR_FAILED;
 
-  *event_count = 0;
-  *events = NULL;
-
-  EventMap joystickEvents;
-  JOYSTICKS->GetEvents(joystickEvents);
-
-  for (EventMap::const_iterator it = joystickEvents.begin(); it != joystickEvents.end(); ++it)
+  std::vector<PeripheralEvent> peripheralEvents;
+  if (JOYSTICKS->GetEvents(peripheralEvents))
   {
-    unsigned int joystickIndex = it->first;
-    const EventVector& vecEvents = it->second;
-
-    if (!vecEvents.empty())
-    {
-      *event_count = vecEvents.size();
-      *events = new JOYSTICK_EVENT[vecEvents.size()];
-
-      for (unsigned int i = 0; i < vecEvents.size(); i++)
-      {
-        const EventPtr& eventPtr = vecEvents.at(i);
-
-        events[i]->type = eventPtr->Type();
-        events[i]->joystick_index = joystickIndex;
-
-        switch (eventPtr->Type())
-        {
-        case JOYSTICK_EVENT_TYPE_RAW_BUTTON:
-        {
-          JOYSTICK_EVENT_RAW_BUTTON* eventStruct = new JOYSTICK_EVENT_RAW_BUTTON;
-          eventStruct->index = static_cast<ButtonEvent*>(eventPtr.get())->Index();
-          eventStruct->state = static_cast<ButtonEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_RAW_HAT:
-        {
-          JOYSTICK_EVENT_RAW_HAT* eventStruct = new JOYSTICK_EVENT_RAW_HAT;
-          eventStruct->index = static_cast<HatEvent*>(eventPtr.get())->Index();
-          eventStruct->state = static_cast<HatEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_RAW_AXIS:
-        {
-          JOYSTICK_EVENT_RAW_AXIS* eventStruct = new JOYSTICK_EVENT_RAW_AXIS;
-          eventStruct->index = static_cast<AxisEvent*>(eventPtr.get())->Index();
-          eventStruct->state = static_cast<AxisEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_MAPPED_BUTTON:
-        {
-          JOYSTICK_EVENT_MAPPED_BUTTON* eventStruct = new JOYSTICK_EVENT_MAPPED_BUTTON;
-          eventStruct->id = static_cast<MappedButtonEvent*>(eventPtr.get())->ID();
-          eventStruct->state = static_cast<MappedButtonEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_MAPPED_TRIGGER:
-        {
-          JOYSTICK_EVENT_MAPPED_TRIGGER* eventStruct = new JOYSTICK_EVENT_MAPPED_TRIGGER;
-          eventStruct->id = static_cast<MappedTriggerEvent*>(eventPtr.get())->ID();
-          eventStruct->state = static_cast<MappedTriggerEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_MAPPED_ANALOG_STICK:
-        {
-          JOYSTICK_EVENT_MAPPED_ANALOG_STICK* eventStruct = new JOYSTICK_EVENT_MAPPED_ANALOG_STICK;
-          eventStruct->id = static_cast<MappedAnalogStickEvent*>(eventPtr.get())->ID();
-          eventStruct->state = static_cast<MappedAnalogStickEvent*>(eventPtr.get())->State();
-          events[i]->event = eventStruct;
-          break;
-        }
-        case JOYSTICK_EVENT_TYPE_NONE:
-        default:
-          break;
-        }
-      }
-    }
+    *event_count = peripheralEvents.size();
+    PeripheralEvent::ToStructs(peripheralEvents, events);
+    return PERIPHERAL_NO_ERROR;
   }
 
+  return PERIPHERAL_ERROR_FAILED;
+}
+void FreeEvents(unsigned int event_count, PERIPHERAL_EVENT* events)
+{
+  PeripheralEvent::FreeStructs(event_count, events);
+}
+
+PERIPHERAL_ERROR GetButtonMap(unsigned int index, JOYSTICK_BUTTON_MAP* button_map)
+{
   return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
 }
 
-void FreeEvents(unsigned int event_count, JOYSTICK_EVENT* events)
+PERIPHERAL_ERROR FreeButtonMap(JOYSTICK_BUTTON_MAP* button_map)
 {
-  if (events)
-  {
-    for (unsigned int i = 0; i < event_count; i++)
-      delete events[i].event;
-  }
-  delete[] events;
+  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
+}
+
+PERIPHERAL_ERROR UpdateButtonMap(unsigned int index, JOYSTICK_BUTTON_MAP_PAIR* key_value_pair)
+{
+  return PERIPHERAL_ERROR_NOT_IMPLEMENTED;
 }
 
 } // extern "C"

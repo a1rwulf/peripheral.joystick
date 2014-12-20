@@ -27,6 +27,56 @@
 
 namespace ADDON
 {
+  class PeripheralScanResult
+  {
+  public:
+    PeripheralScanResult(void) { }
+
+    PeripheralScanResult(const PERIPHERAL_SCAN_RESULT& scanResult)
+    : m_type(scanResult.type),
+      m_index(scanResult.peripheral_index),
+      m_strName(scanResult.name ? scanResult.name : ""),
+      m_vendorId(scanResult.vendor_id),
+      m_productId(scanResult.product_id)
+    {
+    }
+
+    PERIPHERAL_TYPE Type(void) const      { return m_type; }
+    unsigned int    Index(void) const     { return m_index; }
+    std::string     Name(void) const      { return m_strName; }
+    unsigned int    VendorID(void) const  { return m_vendorId; }
+    unsigned int    ProductID(void) const { return m_productId; }
+
+    void SetType(PERIPHERAL_TYPE type)        { m_type      = type; }
+    void SetIndex(unsigned int index)         { m_index     = index; }
+    void SetName(const std::string& strName)  { m_strName   = strName; }
+    void SetVendorID(unsigned int vendorId)   { m_vendorId  = vendorId; }
+    void SetProductID(unsigned int productId) { m_productId = productId; }
+
+    void ToStruct(PERIPHERAL_SCAN_RESULT& scanResult)
+    {
+      scanResult.type             = m_type;
+      scanResult.peripheral_index = m_index;
+      scanResult.name             = new char[m_strName.size() + 1];
+      strcpy(scanResult.name, m_strName.c_str());
+      scanResult.vendor_id        = m_vendorId;
+      scanResult.product_id       = m_productId;
+    }
+
+    static void FreeStruct(PERIPHERAL_SCAN_RESULT& scanResult)
+    {
+      delete[] scanResult.name;
+      scanResult.name = NULL;
+    }
+
+  private:
+    PERIPHERAL_TYPE m_type;
+    unsigned int    m_index;
+    std::string     m_strName;
+    unsigned int    m_vendorId;
+    unsigned int    m_productId;
+  };
+
   class JoystickButton
   {
   public:
@@ -166,7 +216,7 @@ namespace ADDON
       }
     }
 
-    void FreeStruct(JOYSTICK_INFO& info)
+    static void FreeStruct(JOYSTICK_INFO& info)
     {
       delete[] info.name;
       info.name = NULL;
