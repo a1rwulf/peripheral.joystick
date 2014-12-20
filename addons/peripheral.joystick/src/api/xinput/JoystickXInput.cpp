@@ -41,7 +41,7 @@ void CJoystickXInput::Deinitialize(void)
   m_joysticks.clear();
 }
 
-PERIPHERAL_ERROR CJoystickXInput::PerformJoystickScan(std::vector<JoystickConfiguration>& joysticks)
+bool CJoystickXInput::ScanForJoysticks(void)
 {
   Deinitialize();
 

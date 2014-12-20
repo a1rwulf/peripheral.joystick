@@ -34,10 +34,9 @@ namespace JOYSTICK
 
     virtual bool Initialize(void) { return true;  }
     virtual void Deinitialize(void);
+    virtual bool ScanForJoysticks(void);
 
-    virtual PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
-
-    virtual bool GetEvents(EventMap& events);
+    virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events);
 
     // TODO: IsXInputDevice() from JoystickDirectInput.cpp
     static bool IsXInputDevice(const GUID* pGuidProductFromDirectInput);

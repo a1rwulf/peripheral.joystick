@@ -34,7 +34,7 @@ namespace JOYSTICK
 
     virtual bool Initialize(void) = 0;
     virtual void Deinitialize(void) = 0;
-    virtual bool ScanForJoysticks(void) = 0;
+    virtual bool ScanForJoysticks(void);
 
     virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events) = 0;
 

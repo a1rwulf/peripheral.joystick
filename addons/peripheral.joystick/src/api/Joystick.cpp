@@ -16,30 +16,8 @@
  *  along with XBMC; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  */
-#pragma once
 
-#include "xbmc_peripheral_utils.hpp"
+#include "Joystick.h"
 
-#include <vector>
-
-namespace JOYSTICK
-{
-  class CJoystickManager;
-
-  class CJoystick
-  {
-  public:
-    CJoystick(void) { }
-    virtual ~CJoystick(void) { }
-
-    virtual bool Initialize(void) = 0;
-    virtual void Deinitialize(void) = 0;
-    virtual bool ScanForJoysticks(void);
-
-    virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events) = 0;
-
-  protected:
-    bool PerformDeviceScan()
-    CJoystickManager* const m_manager;
-  };
-}
+using namespace ADDON;
+using namespace JOYSTICK;

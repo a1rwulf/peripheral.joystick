@@ -26,7 +26,7 @@
 
 namespace JOYSTICK
 {
-  class CJoystickXInput : public IJoystick
+  class CJoystickXInput : public CJoystick
   {
   public:
     CJoystickXInput(void) { }
@@ -34,22 +34,16 @@ namespace JOYSTICK
 
     virtual bool Initialize(void) { return true;  }
     virtual void Deinitialize(void);
+    virtual bool ScanForJoysticks(void) = 0;
 
-    virtual PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
-
-    virtual bool GetEvents(EventMap& events);
+    virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events) = 0;
 
     // TODO: IsXInputDevice() from JoystickDirectInput.cpp
     static bool IsXInputDevice(const GUID* pGuidProductFromDirectInput);
 
   private:
-    struct XInputJoystick
-    {
-      unsigned int m_controllerID;   // XInput port, in the range (0, 3)
-      DWORD        m_dwPacketNumber; // If unchanged, controller state hasn't changed (currently ignored)
-      ADDON::JoystickConfiguration m_configuration;
-    };
-
-    std::vector<XInputJoystick> m_joysticks;
+    unsigned int m_controllerID;   // XInput port, in the range (0, 3)
+    DWORD        m_dwPacketNumber; // If unchanged, controller state hasn't changed (currently ignored)
+    ADDON::JoystickInfo m_info;
   };
 }

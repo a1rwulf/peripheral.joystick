@@ -206,5 +206,11 @@
     <ClCompile Include="..\..\src\api\xinput\JoystickInterfaceXInput.cpp">
       <Filter>Source Files\api\xinput</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\api\Joystick.cpp">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\api\JoystickInterface.cpp">
+      <Filter>Source Files\api</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
