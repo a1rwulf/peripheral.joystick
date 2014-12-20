@@ -26,11 +26,11 @@ namespace JOYSTICK
 {
   class CJoystickManager;
 
-  class CJoystick
+  class CJoystickInterface
   {
   public:
-    CJoystick(void) { }
-    virtual ~CJoystick(void) { }
+    CJoystickInterface(CJoystickManager* manager) : m_manager(manager) { }
+    virtual ~CJoystickInterface(void) { }
 
     virtual bool Initialize(void) = 0;
     virtual void Deinitialize(void) = 0;

@@ -21,16 +21,16 @@
 #include "JoystickManager.h"
 #include "Joystick.h"
 #if defined(HAVE_DIRECT_INPUT)
-  #include "directinput/JoystickDirectInput.h"
+  #include "directinput/JoystickInterfaceDirectInput.h"
 #endif
 #if defined(HAVE_XINPUT)
-  #include "xinput/JoystickXInput.h"
+  #include "xinput/JoystickInterfaceXInput.h"
 #endif
 #if defined(HAVE_LINUX_JOYSTICK)
-  #include "linux/JoystickLinux.h"
+  #include "linux/JoystickInterfaceLinux.h"
 #endif
 #if defined(HAVE_SDL)
-  #include "sdl/JoystickSDL.h"
+  #include "sdl/JoystickInterfaceSDL.h"
 #endif
 #include "log/Log.h"
 

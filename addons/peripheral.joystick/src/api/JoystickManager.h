@@ -29,7 +29,7 @@
 
 namespace JOYSTICK
 {
-  class IJoystickInterface;
+  class CJoystickInterface;
 
   class CJoystickManager
   {

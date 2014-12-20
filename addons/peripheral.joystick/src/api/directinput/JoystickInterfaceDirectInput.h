@@ -27,11 +27,11 @@
 
 namespace JOYSTICK
 {
-  class CJoystickDirectInput : public IJoystick
+  class CJoystickInterfaceDirectInput : public CJoystickInterface
   {
   public:
-    CJoystickDirectInput(void);
-    virtual ~CJoystickDirectInput(void) { Deinitialize(); }
+    CJoystickInterfaceDirectInput(void);
+    virtual ~CJoystickInterfaceDirectInput(void) { Deinitialize(); }
 
     virtual bool Initialize(void) { return true; }
     virtual void Deinitialize(void);
