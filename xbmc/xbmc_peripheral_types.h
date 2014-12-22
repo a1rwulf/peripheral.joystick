@@ -181,7 +181,7 @@ extern "C"
   {
     JOYSTICK_ID             id;           /*!< @brief the physical button ID */
     JOYSTICK_BUTTON_TYPE    type;         /*!< @brief button type */
-    char*                   label;        /*!< @brief the label, e.g. "X" or "Square" for JOYSTICK_BUTTON_ID_3 */
+    char*                   label;        /*!< @brief the label, e.g. "X" or "Square" for JOYSTICK_ID_BUTTON_3 */
   } ATTRIBUTE_PACKED JOYSTICK_BUTTON;
 
   typedef struct JOYSTICK_PHYSICAL_LAYOUT
