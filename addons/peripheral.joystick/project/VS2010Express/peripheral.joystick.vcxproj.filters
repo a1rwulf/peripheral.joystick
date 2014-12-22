@@ -130,6 +130,12 @@
     <ClInclude Include="..\..\src\api\JoystickInterface.h">
       <Filter>Source Files\api</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\utils\CommonMacros.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\api\JoystickTypes.h">
+      <Filter>Source Files\api</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="XBMC includes">
@@ -164,6 +170,9 @@
     </Filter>
     <Filter Include="Source Files\log">
       <UniqueIdentifier>{55df545d-a671-4a5a-acfe-c7b7f89f55c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{876155f6-b324-416a-b252-e71e71f73fd0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

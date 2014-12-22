@@ -18,17 +18,28 @@
  */
 
 #include "JoystickInterface.h"
+#include "utils/CommonMacros.h"
 
-using namespace ADDON;
 using namespace JOYSTICK;
 
-bool CJoystickInterface::ScanForJoysticks(void)
+CJoystickInterface::CJoystickInterface(const char* strName)
+ : m_strName(strName)
 {
-  std::vector<CJoystick*> results;
-  if (PerformDeviceScan(results))
+  ASSERT(m_strName);
+}
+
+bool CJoystickInterface::ScanForJoysticks(std::vector<CJoystick*>& results)
+{
+  bool bReturn(false);
+
+  std::vector<CJoystick*> joysticks;
+  if (PerformJoystickScan(joysticks))
   {
-    m_manager->AddJoysticks(results);
-    return true;
+    bReturn = true;
+
+    // TODO: Manage added/removed joysticks
+    results.insert(results.end(), joysticks.begin(), joysticks.end());
   }
-  return false;
+
+  return bReturn;
 }

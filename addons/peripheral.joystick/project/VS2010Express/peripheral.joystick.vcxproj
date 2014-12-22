@@ -42,6 +42,7 @@
     <ClInclude Include="..\..\src\api\directinput\JoystickInterfaceDirectInput.h" />
     <ClInclude Include="..\..\src\api\Joystick.h" />
     <ClInclude Include="..\..\src\api\JoystickInterface.h" />
+    <ClInclude Include="..\..\src\api\JoystickTypes.h" />
     <ClInclude Include="..\..\src\api\JoystickManager.h" />
     <ClInclude Include="..\..\src\api\xinput\JoystickInterfaceXInput.h" />
     <ClInclude Include="..\..\src\api\xinput\JoystickXInput.h" />
@@ -54,6 +55,7 @@
     <ClInclude Include="..\..\src\storage\frontend\DatabaseFrontend.h" />
     <ClInclude Include="..\..\src\storage\gamecontrollerdb\DatabaseGameControllerDB.h" />
     <ClInclude Include="..\..\src\storage\xml\DatabaseXml.h" />
+    <ClInclude Include="..\..\src\utils\CommonMacros.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\addon.cpp" />

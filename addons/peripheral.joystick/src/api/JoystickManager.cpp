@@ -34,7 +34,6 @@
 #endif
 #include "log/Log.h"
 
-using namespace ADDON;
 using namespace JOYSTICK;
 using namespace PLATFORM;
 
@@ -61,49 +60,59 @@ bool CJoystickManager::Initialize(void)
   m_interfaces.push_back(new CJoystickInterfaceSDL);
 #endif
 
-  for (std::map<unsigned int, IJoystick*>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
+  // Initialise all known interfaces
+  for (int i = (int)m_interfaces.size() - 1; i >= 0; i--)
   {
-    if (!it->second->Initialize())
+    if (!m_interfaces.at(i)->Initialize())
     {
-      esyslog("Failed to initialize API");
+      esyslog("Failed to initialize interface %s", m_interfaces.at(i)->Name());
+      delete m_interfaces.at(i);
+      m_interfaces.erase(m_interfaces.begin() + i);
+    }
+  }
 
-
-      CLog::Log(LOGERROR, "%s - failed to initialise bus %s", __FUNCTION__, PeripheralTypeTranslator::BusTypeToString(m_busses.at(iBusPtr)->Type()));
-
-  return !m_joysticks.empty();
+  return !m_interfaces.empty();
 }
 
 void CJoystickManager::Deinitialize(void)
 {
   CLockObject lock(m_joystickMutex);
 
-  for (std::map<unsigned int, IJoystick*>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-    delete it->second;
-
-  m_joysticks.clear();
+  for (std::vector<CJoystickInterface*>::iterator it = m_interfaces.begin(); it != m_interfaces.end(); ++it)
+    delete *it;
+  m_interfaces.clear();
 }
 
-bool CJoystickManager::PerformDeviceScan(std::vector<PeripheralScanResult>& scanResults)
+bool CJoystickManager::PerformJoystickScan(std::vector<CJoystick*>& joysticks)
 {
   CLockObject lock(m_joystickMutex);
 
   bool bReturn(true);
 
-  for (std::map<unsigned int, IJoystick*>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-    bReturn &= (*it)->PerformJoystickScan(scanResults);
-  
+  std::vector<CJoystick*> scanResult;
+  for (std::vector<CJoystickInterface*>::iterator it = m_interfaces.begin(); it != m_interfaces.end(); ++it)
+  {
+    bReturn &= (*it)->ScanForJoysticks(scanResult);
+    joysticks.insert(joysticks.end(), scanResult.begin(), scanResult.end()); // TODO
+  }
+
   return bReturn;
 }
 
-bool CJoystickManager::GetJoystickInfo(unsigned int index, ADDON::JoystickInfo& info) const
+CJoystick* CJoystickManager::GetJoystick(unsigned int index) const
 {
-  std::map<unsigned int, IJoystick*>::const_iterator it = m_joysticks.find(index);
-  if (it != m_joysticks.end())
+  CLockObject lock(m_joystickMutex);
+
+  for (JoystickMap::const_iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
   {
-    it->second->GetInfo(info);
-    return true;
+    for (std::vector<CJoystick*>::const_iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+    {
+      if ((*it2)->RequestedPlayer() == index) // TODO: Use index instead of requested player number
+        return *it2;
+    }
   }
-  return false;
+
+  return NULL;
 }
 
 /*!
@@ -115,8 +124,11 @@ bool CJoystickManager::GetEvents(std::vector<ADDON::PeripheralEvent>& events)
 
   bool bResult(true);
 
-  for (std::map<unsigned int, IJoystick*>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-    bResult &= it->second->GetEvents(events);
+  for (JoystickMap::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
+  {
+    for (std::vector<CJoystick*>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2)
+      bResult &= (*it2)->GetEvents(events);
+  }
 
   return bResult;
 }

@@ -82,6 +82,7 @@ extern "C"
   typedef struct PERIPHERAL_SCAN_RESULT
   {
     PERIPHERAL_TYPE type;
+    char*           iface; // Short interface identifier, e.g. "xinput" for XInput
     unsigned int    peripheral_index;
     char*           name;
     unsigned int    vendor_id;

@@ -18,6 +18,12 @@
  */
 
 #include "Joystick.h"
+#include "utils/CommonMacros.h"
 
-using namespace ADDON;
 using namespace JOYSTICK;
+
+CJoystick::CJoystick(CJoystickInterface* api)
+ : m_api(api)
+{
+  ASSERT(m_api);
+}

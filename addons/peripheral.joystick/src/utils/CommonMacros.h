@@ -15,31 +15,28 @@
  *  You should have received a copy of the GNU General Public License
  *  along with XBMC; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
+ *
  */
 #pragma once
 
-#include <vector>
+#if !defined(ASSERT)
+  #if defined(DEBUG) || defined(_DEBUG)
+    #include <assert.h>
+    #define ASSERT(x)  assert(x)
+  #else
+    #include "log/Log.h"
+    #define ASSERT(x)  esyslog("FAILED ASSERT in %s line %s: %s", __FILE__, __LINE__, #x)
+  #endif
+#endif
 
-namespace JOYSTICK
-{
-  class CJoystick;
+#if !defined(SAFE_DELETE)
+  #define SAFE_DELETE(x)  do { delete (x); (x) = NULL; } while (0)
+#endif
 
-  class CJoystickInterface
-  {
-  public:
-    CJoystickInterface(const char* strName);
-    virtual ~CJoystickInterface(void) { }
+#if !defined(SAFE_DELETE_ARRAY)
+  #define SAFE_DELETE_ARRAY(x)  do { delete[] (x); (x) = NULL; } while (0)
+#endif
 
-    virtual bool Initialize(void) = 0;
-    virtual void Deinitialize(void) = 0;
-    bool ScanForJoysticks(std::vector<CJoystick*>& results);
-
-    const char* Name(void) const { return m_strName; }
-
-  protected:
-    virtual bool PerformJoystickScan(std::vector<CJoystick*>& joysticks) = 0;
-
-    const char* const        m_strName;
-    std::vector<CJoystick*>  m_joysticks;
-  };
-}
+#if !defined(SAFE_RELEASE)
+  #define SAFE_RELEASE(p)  do { if(p) { (p)->Release(); (p)=NULL; } } while (0)
+#endif

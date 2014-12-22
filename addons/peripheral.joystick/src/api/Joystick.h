@@ -24,22 +24,23 @@
 
 namespace JOYSTICK
 {
-  class CJoystickManager;
+  class CJoystickInterface;
 
-  class CJoystick
+  class CJoystick : public ADDON::Joystick
   {
   public:
-    CJoystick(void) { }
+    CJoystick(CJoystickInterface* api);
     virtual ~CJoystick(void) { }
+
+    bool operator==(const CJoystick& rhs) const; // TODO
+    bool operator!=(const CJoystick& rhs) const { return !operator==(rhs); }
 
     virtual bool Initialize(void) = 0;
     virtual void Deinitialize(void) = 0;
-    virtual bool ScanForJoysticks(void);
 
     virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events) = 0;
 
   protected:
-    bool PerformDeviceScan()
-    CJoystickManager* const m_manager;
+    CJoystickInterface* m_api;
   };
 }

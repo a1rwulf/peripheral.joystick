@@ -18,28 +18,7 @@
  */
 #pragma once
 
-#include <vector>
-
-namespace JOYSTICK
-{
-  class CJoystick;
-
-  class CJoystickInterface
-  {
-  public:
-    CJoystickInterface(const char* strName);
-    virtual ~CJoystickInterface(void) { }
-
-    virtual bool Initialize(void) = 0;
-    virtual void Deinitialize(void) = 0;
-    bool ScanForJoysticks(std::vector<CJoystick*>& results);
-
-    const char* Name(void) const { return m_strName; }
-
-  protected:
-    virtual bool PerformJoystickScan(std::vector<CJoystick*>& joysticks) = 0;
-
-    const char* const        m_strName;
-    std::vector<CJoystick*>  m_joysticks;
-  };
-}
+#define INTERFACE_DIRECTINPUT  "directinput"
+#define INTERFACE_LINUX        "linux"
+#define INTERFACE_SDL          "sdl"
+#define INTERFACE_XINPUT       "xinput"

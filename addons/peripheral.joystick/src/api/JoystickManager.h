@@ -19,8 +19,6 @@
  */
 #pragma once
 
-#include "Joystick.h"
-
 #include "platform/threads/mutex.h"
 #include "xbmc_peripheral_utils.hpp"
 
@@ -29,13 +27,13 @@
 
 namespace JOYSTICK
 {
+  class CJoystick;
   class CJoystickInterface;
 
   class CJoystickManager
   {
   private:
     CJoystickManager(void) { }
-    CJoystickManager(const CJoystickManager& other);
 
   public:
     static CJoystickManager& Get(void);
@@ -43,9 +41,10 @@ namespace JOYSTICK
 
     bool Initialize(void);
     void Deinitialize(void);
-    bool PerformDeviceScan(std::vector<ADDON::PeripheralScanResult>& scanResults);
 
-    bool GetJoystickInfo(unsigned int index, ADDON::JoystickInfo& info) const;
+    bool PerformJoystickScan(std::vector<CJoystick*>& joysticks);
+
+    CJoystick* GetJoystick(unsigned int index) const;
 
     /*!
     * @brief Get all events that have occurred since the last call to GetEvents()
@@ -53,8 +52,10 @@ namespace JOYSTICK
     bool GetEvents(std::vector<ADDON::PeripheralEvent>& events);
 
   private:
+    typedef std::map<CJoystickInterface*, std::vector<CJoystick*> > JoystickMap; // TODO
+
     std::vector<CJoystickInterface*>   m_interfaces;
-    std::map<unsigned int, IJoystick*> m_joysticks; // joystick ID -> joystick
-    PLATFORM::CMutex                   m_joystickMutex;
+    JoystickMap                        m_joysticks;
+    mutable PLATFORM::CMutex           m_joystickMutex;
   };
 }

@@ -20,9 +20,11 @@
 
 #define PERIPHERAL_ADDON_JOYSTICKS
 
+#include "api/Joystick.h"
 #include "api/JoystickManager.h"
 #include "log/Log.h"
 #include "log/LogAddon.h"
+#include "utils/CommonMacros.h"
 
 #include "libXBMC_addon.h"
 #include "libXBMC_peripheral.h"
@@ -35,10 +37,6 @@
 
 using namespace ADDON;
 using namespace JOYSTICK;
-
-#ifndef SAFE_DELETE
-#define SAFE_DELETE(x)  do { delete x; x = NULL; } while (0)
-#endif
 
 extern "C"
 {
@@ -136,18 +134,54 @@ PERIPHERAL_ERROR GetAddonCapabilities(PERIPHERAL_CAPABILITIES *pCapabilities)
   return PERIPHERAL_NO_ERROR;
 }
 
+PERIPHERAL_ERROR PerformDeviceScan(unsigned int* peripheral_count, PERIPHERAL_SCAN_RESULT** scan_results)
+{
+  if (!peripheral_count || !scan_results)
+    return PERIPHERAL_ERROR_INVALID_PARAMETERS;
+
+  if (!JOYSTICKS)
+    return PERIPHERAL_ERROR_FAILED;
+
+  std::vector<PeripheralScanResult> results;
+  std::vector<CJoystick*> joysticks;
+  if (JOYSTICKS->PerformJoystickScan(joysticks))
+  {
+    for (std::vector<CJoystick*>::const_iterator it = joysticks.begin(); it != joysticks.end(); ++it)
+    {
+      PeripheralScanResult result;
+      result.SetType(PERIPHERAL_TYPE_JOYSTICK);
+      result.SetInterface(""); // TODO
+      result.SetIndex((*it)->RequestedPlayer()); // TODO: Joystick index
+      result.SetName((*it)->Name());
+      result.SetVendorID(0); // TODO
+      result.SetProductID(0); // TODO
+      results.push_back(result);
+    }
+    *peripheral_count = results.size();
+    PeripheralScanResult::ToStructs(results, scan_results);
+    return PERIPHERAL_NO_ERROR;
+  }
+
+  return PERIPHERAL_ERROR_FAILED;
+}
+
+void FreeScanResults(unsigned int peripheral_count, PERIPHERAL_SCAN_RESULT* scan_results)
+{
+  PeripheralScanResult::FreeStructs(peripheral_count, scan_results);
+}
+
 PERIPHERAL_ERROR GetJoystickInfo(unsigned int index, JOYSTICK_INFO* info)
 {
   if (!info)
     return PERIPHERAL_ERROR_INVALID_PARAMETERS;
 
-  JoystickInfo joystickInfo;
-  if (CJoystickManager::Get().GetJoystickInfo(index, joystickInfo))
-  {
-    joystickInfo.ToStruct(*info);
-    return PERIPHERAL_NO_ERROR;
-  }
-  return PERIPHERAL_ERROR_FAILED;
+  CJoystick* joystick = CJoystickManager::Get().GetJoystick(index);
+  if (!joystick)
+    return PERIPHERAL_ERROR_FAILED;
+
+  joystick->ToStruct(*info);
+
+  return PERIPHERAL_NO_ERROR;
 }
 
 void FreeJoystickInfo(JOYSTICK_INFO* info)
@@ -155,7 +189,7 @@ void FreeJoystickInfo(JOYSTICK_INFO* info)
   if (!info)
     return;
 
-  JoystickInfo::FreeStruct(*info);
+  CJoystick::FreeStruct(*info);
 }
 
 PERIPHERAL_ERROR GetEvents(unsigned int* event_count, PERIPHERAL_EVENT** events)
@@ -176,6 +210,7 @@ PERIPHERAL_ERROR GetEvents(unsigned int* event_count, PERIPHERAL_EVENT** events)
 
   return PERIPHERAL_ERROR_FAILED;
 }
+
 void FreeEvents(unsigned int event_count, PERIPHERAL_EVENT* events)
 {
   PeripheralEvent::FreeStructs(event_count, events);

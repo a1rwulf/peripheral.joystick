@@ -23,35 +23,25 @@
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
-#include <string>
 
 namespace JOYSTICK
 {
+  class CJoystickInterfaceDirectInput;
+
   class CJoystickDirectInput : public CJoystick
   {
   public:
-    CJoystickDirectInput(void);
+    CJoystickDirectInput(LPDIRECTINPUTDEVICE8 joystickDevice, CJoystickInterfaceDirectInput* api);
     virtual ~CJoystickDirectInput(void) { Deinitialize(); }
 
-    virtual bool Initialize(void) { return true; }
-    virtual void Deinitialize(void);
+    virtual bool Initialize(void);
+    virtual void Deinitialize(void) { }
 
-    virtual PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
-
-    virtual bool GetEvents(EventMap& events);
+    virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events);
 
   private:
-    static BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE *pdidInstance, VOID *pContext);
     static BOOL CALLBACK EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE *pdidoi, VOID *pContext);
-    static bool IsXInputDevice(const GUID *pGuidProductFromDirectInput);
 
-    struct DirectInputJoystick
-    {
-      LPDIRECTINPUTDEVICE8         m_joystickDevice;
-      ADDON::JoystickConfiguration m_configuration;
-    };
-
-    std::vector<DirectInputJoystick> m_joysticks;
-    LPDIRECTINPUT8                   m_pDirectInput; // DirectInput handle, we hold onto it and release it when freeing resources
+    LPDIRECTINPUTDEVICE8 m_joystickDevice;
   };
 }

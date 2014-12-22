@@ -18,11 +18,11 @@
  *
  */
 
+#include "JoystickInterfaceDirectInput.h"
 #include "JoystickDirectInput.h"
-#include "api/JoystickManager.h"
+#include "api/JoystickTypes.h"
 #include "log/Log.h"
-
-#include <dinputd.h>
+#include "utils/CommonMacros.h"
 
 // For getting the GUIDs of XInput devices
 #include <wbemidl.h>
@@ -31,111 +31,71 @@
 #pragma comment(lib, "Dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
-using namespace ADDON;
 using namespace JOYSTICK;
-
-#define MAX_AXISAMOUNT  32768
-#define AXIS_MIN       -32768  /* minimum value for axis coordinate */
-#define AXIS_MAX        32767  /* maximum value for axis coordinate */
-
-#define JOY_POV_360  JOY_POVBACKWARD * 2
-#define JOY_POV_NE   (JOY_POVFORWARD + JOY_POVRIGHT) / 2
-#define JOY_POV_SE   (JOY_POVRIGHT + JOY_POVBACKWARD) / 2
-#define JOY_POV_SW   (JOY_POVBACKWARD + JOY_POVLEFT) / 2
-#define JOY_POV_NW   (JOY_POVLEFT + JOY_POV_360) / 2
-
-#ifndef SAFE_RELEASE
-  #define SAFE_RELEASE(p)   do { if(p) { (p)->Release(); (p)=NULL; } } while (0)
-#endif
 
 HWND g_hWnd = NULL;  // TODO: https://stackoverflow.com/questions/6202547/win32-get-main-wnd-handle-of-application
 
-CJoystickDirectInput::CJoystickDirectInput(void)
- : m_pDirectInput(NULL)
+CJoystickInterfaceDirectInput::CJoystickInterfaceDirectInput(void)
+ : CJoystickInterface(INTERFACE_DIRECTINPUT),
+   m_pDirectInput(NULL)
 {
 }
 
-void CJoystickDirectInput::Deinitialize(void)
+bool CJoystickInterfaceDirectInput::Initialize(void)
 {
-  m_joysticks.clear();
+  HRESULT hr;
 
-  // Release any DirectInput objects
+  hr = DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<VOID**>(&m_pDirectInput), NULL);
+  if (FAILED(hr))
+  {
+    esyslog("%s: Failed to create DirectInput", __FUNCTION__);
+    return false;
+  }
+
+  return true;
+}
+
+void CJoystickInterfaceDirectInput::Deinitialize(void)
+{
+  ClearScanResults();
+
   SAFE_RELEASE(m_pDirectInput);
 }
 
-PERIPHERAL_ERROR CJoystickDirectInput::PerformJoystickScan(std::vector<JoystickConfiguration>& joysticks)
+bool CJoystickInterfaceDirectInput::PerformJoystickScan(std::vector<CJoystick*>& joysticks)
 {
   Deinitialize();
 
   HRESULT hr;
 
-  hr = DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, IID_IDirectInput8, (VOID**)&m_pDirectInput, NULL);
-  if (FAILED(hr))
-  {
-    esyslog("%s: Failed to create DirectInput", __FUNCTION__);
-    return PERIPHERAL_ERROR_FAILED;
-  }
-
   hr = m_pDirectInput->EnumDevices(DI8DEVCLASS_GAMECTRL, EnumJoysticksCallback, this, DIEDFL_ATTACHEDONLY);
   if (FAILED(hr))
   {
     esyslog("%s: Joystick enumeration failed", __FUNCTION__);
-    return PERIPHERAL_ERROR_FAILED;
+    return false;
   }
 
-  // Initialize axes
-  for (std::vector<DirectInputJoystick>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-  {
-    // Enumerate the joystick objects. The callback function enabled user
-    // interface elements for objects that are found, and sets the min/max
-    // values properly for discovered axes.
-    hr = it->m_joystickDevice->EnumObjects(EnumObjectsCallback, it->m_joystickDevice, DIDFT_ALL);
-    if (FAILED(hr))
-      break;
+  // TODO
+  joysticks.insert(joysticks.end(), m_scanResults.begin(), m_scanResults.end());
+  ClearScanResults();
 
-    joysticks.push_back(it->m_configuration);
-  }
-
-  if (FAILED(hr))
-  {
-    esyslog("%s: Failed to enumerate objects", __FUNCTION__);
-    return PERIPHERAL_ERROR_FAILED;
-  }
-
-  return PERIPHERAL_NO_ERROR;
+  return true;
 }
 
-//-----------------------------------------------------------------------------
-// Name: EnumObjectsCallback()
-// Desc: Callback function for enumerating objects (axes, buttons, POVs) on a
-//       joystick. This function enables user interface elements for objects
-//       that are found to exist, and scales axes min/max values.
-//-----------------------------------------------------------------------------
-BOOL CALLBACK CJoystickDirectInput::EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi, VOID* pContext)
+void CJoystickInterfaceDirectInput::AddScanResult(CJoystick* joystick)
 {
-  LPDIRECTINPUTDEVICE8 pJoy = static_cast<LPDIRECTINPUTDEVICE8>(pContext);
-
-  // For axes that are returned, set the DIPROP_RANGE property for the
-  // enumerated axis in order to scale min/max values.
-  if (pdidoi->dwType & DIDFT_AXIS)
-  {
-    DIPROPRANGE diprg;
-    diprg.diph.dwSize       = sizeof(DIPROPRANGE);
-    diprg.diph.dwHeaderSize = sizeof(DIPROPHEADER);
-    diprg.diph.dwHow        = DIPH_BYID;
-    diprg.diph.dwObj        = pdidoi->dwType; // Specify the enumerated axis
-    diprg.lMin              = AXIS_MIN;
-    diprg.lMax              = AXIS_MAX;
-
-    // Set the range for the axis
-    HRESULT hr = pJoy->SetProperty(DIPROP_RANGE, &diprg.diph);
-    if (FAILED(hr))
-      esyslog(__FUNCTION__" : Failed to set property on %s", pdidoi->tszName);
-  }
-  return DIENUM_CONTINUE;
+  joystick->SetRequestedPlayer(m_scanResults.size() + 1);
+  m_scanResults.push_back(joystick);
 }
 
-BOOL CALLBACK CJoystickDirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE *pdidInstance, VOID *pContext)
+void CJoystickInterfaceDirectInput::ClearScanResults(void)
+{
+  for (std::vector<CJoystick*>::iterator it = m_scanResults.begin(); it != m_scanResults.end(); ++it)
+    delete *it;
+  m_scanResults.clear();
+}
+
+BOOL CALLBACK CJoystickInterfaceDirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE *pdidInstance, VOID *pContext)
 {
   HRESULT hr;
 
@@ -143,13 +103,13 @@ BOOL CALLBACK CJoystickDirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE
   if (IsXInputDevice(&pdidInstance->guidProduct))
     return DIENUM_CONTINUE;
 
-  CJoystickDirectInput* context = static_cast<CJoystickDirectInput*>(pContext);
+  CJoystickInterfaceDirectInput* context = static_cast<CJoystickInterfaceDirectInput*>(pContext);
 
   LPDIRECTINPUTDEVICE8 pJoystick = NULL;
 
   // Obtain an interface to the enumerated joystick.
   hr = context->m_pDirectInput->CreateDevice(pdidInstance->guidInstance, &pJoystick, NULL);
-  if (FAILED(hr))
+  if (FAILED(hr) || pJoystick == NULL)
   {
     esyslog("%s: Failed to CreateDevice: %s", __FUNCTION__, pdidInstance->tszProductName);
     return DIENUM_CONTINUE;
@@ -188,22 +148,13 @@ BOOL CALLBACK CJoystickDirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE
   isyslog("%s: Total Axes: %d Total Hats: %d Total Buttons: %d", __FUNCTION__,
     diDevCaps.dwAxes, diDevCaps.dwPOVs, diDevCaps.dwButtons);
 
-  DirectInputJoystick joystick;
-  joystick.m_joystickDevice = pJoystick;
-
-  joystick.m_configuration.SetIndex(0); // Set by CJoystickManager
-  joystick.m_configuration.SetRequestedPlayer(context->m_joysticks.size() + 1);
-  joystick.m_configuration.SetName(pdidInstance->tszProductName ? pdidInstance->tszProductName : "");
-  joystick.m_configuration.SetIconPath(""); // TODO
-
-  for (unsigned int i = 0; i < diDevCaps.dwButtons; i++)
-    joystick.m_configuration.ButtonIndexes().push_back(i);
-  for (unsigned int i = 0; i < diDevCaps.dwPOVs; i++)
-    joystick.m_configuration.HatIndexes().push_back(i);
-  for (unsigned int i = 0; i < diDevCaps.dwAxes; i++)
-    joystick.m_configuration.AxisIndexes().push_back(i);
-  
-  context->m_joysticks.push_back(joystick);
+  CJoystick* joystick = new CJoystickDirectInput(pJoystick, context);
+  joystick->SetName(pdidInstance->tszProductName ? pdidInstance->tszProductName : "");
+  joystick->SetRequestedPlayer(0); // TODO
+  joystick->SetButtonCount(diDevCaps.dwButtons);
+  joystick->SetHatCount(diDevCaps.dwPOVs);
+  joystick->SetAxisCount(diDevCaps.dwAxes);
+  context->AddScanResult(joystick);
 
   return DIENUM_CONTINUE;
 }
@@ -214,7 +165,7 @@ BOOL CALLBACK CJoystickDirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE
 // Unfortunately this information can not be found by just using DirectInput.
 // See http://msdn.microsoft.com/en-us/library/windows/desktop/ee417014(v=vs.85).aspx
 //-----------------------------------------------------------------------------
-bool CJoystickDirectInput::IsXInputDevice(const GUID* pGuidProductFromDirectInput)
+bool CJoystickInterfaceDirectInput::IsXInputDevice(const GUID* pGuidProductFromDirectInput)
 {
   IWbemLocator*         pIWbemLocator = NULL;
   IEnumWbemClassObject* pEnumDevices = NULL;
@@ -329,73 +280,4 @@ bool CJoystickDirectInput::IsXInputDevice(const GUID* pGuidProductFromDirectInpu
     CoUninitialize();
 
   return bIsXinputDevice;
-}
-
-bool CJoystickDirectInput::GetEvents(EventMap& events)
-{
-  /*
-  for (std::vector<DirectInputJoystick>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-  {
-    CJoystickState &state = InitialState();
-
-    HRESULT hr;
-
-    LPDIRECTINPUTDEVICE8 pJoy = m_joystickDevice;
-    DIJOYSTATE2 js; // DInput joystick state
-
-    hr = pJoy->Poll();
-
-    if (FAILED(hr))
-    {
-      int i = 0;
-      // DInput is telling us that the input stream has been interrupted. We
-      // aren't tracking any state between polls, so we don't have any special
-      // reset that needs to be done. We just re-acquire and try again 10 times.
-      do
-      {
-        hr = pJoy->Acquire();
-      } while (hr == DIERR_INPUTLOST && i++ < 10);
-
-      // hr may be DIERR_OTHERAPPHASPRIO or other errors. This may occur when the
-      // app is minimized or in the process of switching, so just try again later.
-      return false;
-    }
-
-    // Get the input's device state
-    hr = pJoy->GetDeviceState(sizeof(DIJOYSTATE2), &js);
-    if (FAILED(hr))
-      return false; // The device should have been acquired during the Poll()
-
-    // Gamepad buttons
-    for (unsigned int b = 0; b < state.buttons.size(); b++)
-      state.buttons[b] = ((js.rgbButtons[b] & 0x80) ? 1 : 0);
-
-    // Gamepad hats
-    for (unsigned int h = 0; h < state.hats.size(); h++)
-    {
-      state.hats[h].Center();
-      bool bCentered = ((js.rgdwPOV[h] & 0xFFFF) == 0xFFFF);
-      if (!bCentered)
-      {
-        if ((JOY_POV_NW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_360) || js.rgdwPOV[h] <= JOY_POV_NE)
-          state.hats[h][CJoystickHat::UP] = true;
-        else if (JOY_POV_SE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SW)
-          state.hats[h][CJoystickHat::DOWN] = true;
-
-        if (JOY_POV_NE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SE)
-          state.hats[h][CJoystickHat::RIGHT] = true;
-        else if (JOY_POV_SW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_NW)
-          state.hats[h][CJoystickHat::LEFT] = true;
-      }
-    }
-
-    // Gamepad axes
-    long amounts[] = { js.lX, js.lY, js.lZ, js.lRx, js.lRy, js.lRz };
-    for (unsigned int a = 0; a < std::min(state.axes.size(), 6U); a++)
-      state.SetAxis(a, amounts[a], MAX_AXISAMOUNT);
-
-    UpdateState(state);
-  }
-  */
-  return false;
 }
