@@ -18,7 +18,9 @@
  *
  */
 
+#include "JoystickInterfaceLinux.h"
 #include "JoystickLinux.h"
+#include "api/JoystickTypes.h"
 #include "log/Log.h"
 
 #include <dirent.h>
@@ -83,15 +85,12 @@ static const char *button_names[KEY_MAX - BTN_MISC + 1] =
   "WheelBtn",   "Gear up",
 };
 
-void CJoystickLinux::Deinitialize(void)
+CJoystickInterfaceLinux::CJoystickInterfaceLinux(void)
+ : CJoystickInterface(INTERFACE_LINUX)
 {
-  for (std::vector<LinuxJoystick>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-    close(it->m_fd);
-
-  m_joysticks.clear();
 }
 
-PERIPHERAL_ERROR CJoystickLinux::PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks)
+bool CJoystickInterfaceLinux::PerformJoystickScan(std::vector<CJoystick*>& joysticks)
 {
   Deinitialize();
 
@@ -111,7 +110,7 @@ PERIPHERAL_ERROR CJoystickLinux::PerformJoystickScan(std::vector<ADDON::Joystick
     {
       // Found a joystick device
       std::string filename(inputDir + "/" + pDirent->d_name);
-      isyslog("CJoystickLinuxsss::Initialize: opening joystick %s", filename.c_str());
+      isyslog("CJoystickInterfaceLinux::Initialize: opening joystick %s", filename.c_str());
 
       int fd = open(filename.c_str(), O_RDONLY);
       if (fd < 0)
@@ -203,23 +202,11 @@ PERIPHERAL_ERROR CJoystickLinux::PerformJoystickScan(std::vector<ADDON::Joystick
         isyslog("Axes: %s", strAxes.str().c_str());
       }
 
-      LinuxJoystick joystick;
-      joystick.m_fd       = fd;
-      joystick.m_filename = filename;
-      joystick.m_configuration.SetIndex(m_joysticks.size()); // TODO: CJoystickManager::Get().NextID();
-      joystick.m_configuration.SetRequestedPlayer(m_joysticks.size()); // TODO: Get from CJoystickManager
-      joystick.m_configuration.SetName(name);
-      joystick.m_configuration.SetIconPath(""); // TODO
-
-      for (unsigned int i = 0; i < buttons; i++)
-        joystick.m_configuration.ButtonIndexes().push_back(i);
-      // No hats
-      for (unsigned int i = 0; i < axes; i++)
-        joystick.m_configuration.AxisIndexes().push_back(i);
-
-      m_joysticks.push_back(joystick);
-
-      joysticks.push_back(joystick.m_configuration);
+      CJoystick* joystick = new CJoystickLinux(fd, filename, this);
+      joystick->SetName(name);
+      joystick->SetButtonCount(buttons);
+      joystick->SetAxisCount(axes);
+      joysticks.push_back(joystick);
     }
   }
 
@@ -228,7 +215,7 @@ PERIPHERAL_ERROR CJoystickLinux::PerformJoystickScan(std::vector<ADDON::Joystick
   return PERIPHERAL_NO_ERROR;
 }
 
-bool CJoystickLinux::GetButtonMap(int fd, uint16_t *buttonMap)
+bool CJoystickInterfaceLinux::GetButtonMap(int fd, uint16_t *buttonMap)
 {
   static unsigned long joyGetButtonMapIoctl = 0;
   static const unsigned long ioctls[] = { JSIOCGBTNMAP, JSIOCGBTNMAP_LARGE, JSIOCGBTNMAP_SMALL, 0 };
@@ -244,12 +231,12 @@ bool CJoystickLinux::GetButtonMap(int fd, uint16_t *buttonMap)
   }
 }
 
-bool CJoystickLinux::GetAxisMap(int fd, uint8_t *axisMap)
+bool CJoystickInterfaceLinux::GetAxisMap(int fd, uint8_t *axisMap)
 {
   return ioctl(fd, JSIOCGAXMAP, axisMap);
 }
 
-bool CJoystickLinux::DetermineIoctl(int fd, const unsigned long *ioctls, uint16_t *buttonMap, unsigned long &ioctl_used)
+bool CJoystickInterfaceLinux::DetermineIoctl(int fd, const unsigned long *ioctls, uint16_t *buttonMap, unsigned long &ioctl_used)
 {
   int retval = 0;
 
@@ -269,57 +256,5 @@ bool CJoystickLinux::DetermineIoctl(int fd, const unsigned long *ioctls, uint16_
       return false;
     }
   }
-  return false;
-}
-
-bool CJoystickLinux::GetEvents(EventMap& events)
-{
-  /*
-  for (std::vector<LinuxJoystick>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-  {
-    js_event joyEvent;
-
-    while(true)
-    {
-      // Flush the driver queue
-      if (read(it->m_fd, &joyEvent, sizeof(joyEvent)) != sizeof(joyEvent))
-      {
-        if (errno == EAGAIN)
-        {
-          // The circular driver queue holds 64 events. If compiling your own driver,
-          // you can increment this size bumping up JS_BUFF_SIZE in joystick.h
-          break;
-        }
-        else
-        {
-          esyslog("%s: failed to read joystick \"%s\" on %s", __FUNCTION__, Name().c_str(), m_filename.c_str());
-          break;
-        }
-      }
-
-      // The possible values of joystickEvent.type are:
-      // JS_EVENT_BUTTON    0x01    // button pressed/released
-      // JS_EVENT_AXIS      0x02    // joystick moved
-      // JS_EVENT_INIT      0x80    // (flag) initial state of device
-
-      // Ignore initial events, because they mess up the buttons
-      switch (joyEvent.type)
-      {
-      case JS_EVENT_BUTTON:
-        if (joyEvent.number < m_state.buttons.size())
-          m_state.buttons[joyEvent.number] = joyEvent.value;
-        break;
-      case JS_EVENT_AXIS:
-        if (joyEvent.number < m_state.axes.size())
-          m_state.SetAxis(joyEvent.number, joyEvent.value, MAX_AXIS);
-        break;
-      default:
-        break;
-      }
-    }
-
-    UpdateState(m_state);
-  }
-  */
   return false;
 }

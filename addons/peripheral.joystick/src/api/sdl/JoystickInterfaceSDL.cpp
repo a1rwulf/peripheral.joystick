@@ -18,37 +18,37 @@
  *
  */
 
+#include "JoystickInterfaceSDL.h"
 #include "JoystickSDL.h"
-#include "api/JoystickManager.h"
+#include "api/JoystickTypes.h"
 #include "log/Log.h"
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_joystick.h>
 
-#define MAX_AXES          64
-#define MAX_AXISAMOUNT    32768
-
-using namespace ADDON;
 using namespace JOYSTICK;
 
-void CJoystickSDL::Deinitialize(void)
+CJoystickInterfaceSDL::CJoystickInterfaceSDL(void)
+ : CJoystickInterface(INTERFACE_SDL)
 {
-  m_joysticks.clear();
+}
 
+void CJoystickInterfaceSDL::Deinitialize(void)
+{
   // Restart SDL joystick subsystem
   SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
   if (SDL_WasInit(SDL_INIT_JOYSTICK) !=  0)
     esyslog("Stopping joystick SDL subsystem failed");
 }
 
-PERIPHERAL_ERROR CJoystickSDL::PerformJoystickScan(std::vector<JoystickConfiguration>& joysticks)
+bool CJoystickInterfaceSDL::PerformJoystickScan(std::vector<CJoystick*>& joysticks)
 {
   Deinitialize();
 
   if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0)
   {
     esyslog("(Re)start joystick subsystem failed : %s", SDL_GetError());
-    return PERIPHERAL_ERROR_FAILED;
+    return false;
   }
 
   // Any joysticks connected?
@@ -85,28 +85,20 @@ PERIPHERAL_ERROR CJoystickSDL::PerformJoystickScan(std::vector<JoystickConfigura
         }
         else
         {
-          SDLJoystick joystick;
-          joystick.m_pJoystick = joy;
-          joystick.m_configuration.SetIndex(m_joysticks.size()); // TODO: CJoystickManager::Get().NextID();
-          joystick.m_configuration.SetRequestedPlayer(m_joysticks.size()); // TODO: Get from CJoystickManager
-          joystick.m_configuration.SetName(SDL_JoystickName(i));
-          joystick.m_configuration.SetIconPath(""); // TODO
+          CJoystick* joystick = new CJoystickSDL(joy, this);
+          joystick->SetName(SDL_JoystickName(i));
+          joystick->SetButtonCount(SDL_JoystickNumButtons(joy));
+          joystick->SetHatCount(SDL_JoystickNumHats(joy));
+          joystick->SetAxisCount(SDL_JoystickNumAxes(joy));
+          joysticks.push_back(joystick);
 
-          for (int i = 0; i < SDL_JoystickNumButtons(joy); i++)
-            joystick.m_configuration.ButtonIndexes().push_back(i);
-          for (int i = 0; i < SDL_JoystickNumHats(joy); i++)
-            joystick.m_configuration.ButtonIndexes().push_back(i);
-          for (int i = 0; i < SDL_JoystickNumAxes(joy); i++)
-            joystick.m_configuration.AxisIndexes().push_back(i);
-
-          m_joysticks.push_back(joystick);
-          joysticks.push_back(joystick.m_configuration);
-
+          /* TODO
           isyslog("Enabled Joystick: \"%s\" (SDL)", joystick.m_configuration.Name().c_str());
           isyslog("Details: Total Axes: %d Total Hats: %d Total Buttons: %d",
                   joystick.m_configuration.AxisIndexes().size(),
                   joystick.m_configuration.HatIndexes().size(),
                   joystick.m_configuration.ButtonIndexes().size());;
+          */
         }
       }
     }
@@ -115,38 +107,5 @@ PERIPHERAL_ERROR CJoystickSDL::PerformJoystickScan(std::vector<JoystickConfigura
   // Disable joystick events, since we'll be polling them
   SDL_JoystickEventState(SDL_DISABLE);
   
-  return PERIPHERAL_NO_ERROR;
-}
-
-bool CJoystickSDL::GetEvents(EventMap& events)
-{
-  /*
-  for (std::vector<SDLJoystick>::iterator it = m_joysticks.begin(); it != m_joysticks.end(); ++it)
-  {
-    CJoystickState &state = InitialState();
-
-    // Update the state of all opened joysticks
-    SDL_JoystickUpdate();
-
-    // Gamepad buttons
-    for (unsigned int b = 0; b < state.buttons.size(); b++)
-      state.buttons[b] = (SDL_JoystickGetButton(it->m_pJoystick, b) ? true : false);
-
-    // Gamepad hats
-    for (unsigned int h = 0; h < state.hats.size(); h++)
-    {
-      state.hats[h].Center();
-      uint8_t hat = SDL_JoystickGetHat(it->m_pJoystick, h);
-      if      (hat & SDL_HAT_UP)    state.hats[h][CJoystickHat::UP] = true;
-      else if (hat & SDL_HAT_DOWN)  state.hats[h][CJoystickHat::DOWN] = true;
-      if      (hat & SDL_HAT_RIGHT) state.hats[h][CJoystickHat::RIGHT] = true;
-      else if (hat & SDL_HAT_LEFT)  state.hats[h][CJoystickHat::LEFT] = true;
-    }
-
-    // Gamepad axes
-    for (unsigned int a = 0; a < state.axes.size(); a++)
-      state.SetAxis(a, (long)SDL_JoystickGetAxis(it->m_pJoystick, a), MAX_AXISAMOUNT);
-  }
-  */
-  return false;
+  return true;
 }

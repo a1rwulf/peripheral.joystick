@@ -21,34 +21,25 @@
 
 #include "api/Joystick.h"
 
-#include <string>
-
-struct _SDL_Joystick;
-typedef struct _SDL_Joystick SDL_Joystick;
+#include <SDL/SDL.h>
+#include <SDL/SDL_joystick.h>
 
 namespace JOYSTICK
 {
-  class CJoystickSDL : public IJoystick
+  class CJoystickInterfaceSDL;
+
+  class CJoystickSDL : public CJoystick
   {
   public:
-    CJoystickSDL(void) { }
+    CJoystickSDL(SDL_Joystick* pJoystick, CJoystickInterfaceSDL* api);
     virtual ~CJoystickSDL(void) { Deinitialize(); }
 
     virtual bool Initialize(void) { return true; }
-    virtual void Deinitialize(void);
+    virtual void Deinitialize(void) { }
 
-    virtual PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
-
-    virtual bool GetEvents(EventMap& events);
+    virtual bool GetEvents(std::vector<ADDON::PeripheralEvent>& events);
 
   private:
-
-    struct SDLJoystick
-    {
-      SDL_Joystick* m_pJoystick;
-      ADDON::JoystickConfiguration m_configuration;
-    };
-
-    std::vector<SDLJoystick> m_joysticks;
+    SDL_Joystick* m_pJoystick;
   };
 }

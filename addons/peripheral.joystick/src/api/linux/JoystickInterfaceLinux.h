@@ -19,25 +19,24 @@
  */
 #pragma once
 
-#include "api/Joystick.h"
+#include "api/JoystickInterface.h"
 
 #include <stdint.h>
 #include <string>
 
 namespace JOYSTICK
 {
-  class CJoystickLinux : public IJoystick
+  class CJoystickInterfaceLinux : public CJoystickInterface
   {
   public:
-    CJoystickLinux(void) { }
-    virtual ~CJoystickLinux(void) { Deinitialize(); }
+    CJoystickInterfaceLinux(void);
+    virtual ~CJoystickInterfaceLinux(void) { Deinitialize(); }
 
     virtual bool Initialize(void) { return true; }
-    virtual void Deinitialize(void);
+    virtual void Deinitialize(void) { }
 
-    virtual PERIPHERAL_ERROR PerformJoystickScan(std::vector<ADDON::JoystickConfiguration>& joysticks);
-
-    virtual bool GetEvents(EventMap& events);
+  protected:
+    virtual bool PerformJoystickScan(std::vector<CJoystick*>& joysticks);
 
   private:
     /**
@@ -62,14 +61,5 @@ namespace JOYSTICK
      * @param ioctl_used - The ioctl that succeeded (untouched if false is returned)
      */
     static bool DetermineIoctl(int fd, const unsigned long *ioctls, uint16_t *buttonMap, unsigned long &ioctl_used);
-
-    struct LinuxJoystick
-    {
-      int            m_fd;
-      std::string    m_filename; // For debugging purposes
-      ADDON::JoystickConfiguration m_configuration;
-    };
-
-    std::vector<LinuxJoystick> m_joysticks;
   };
 }
